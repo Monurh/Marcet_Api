@@ -1,7 +1,10 @@
-﻿using Marcet_DB.Models;
+﻿using Marcet_Api.Authentication;
+using Marcet_DB.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Marcet_DB.Controllers
 {
@@ -36,7 +39,11 @@ namespace Marcet_DB.Controllers
                 userData.CustomerId = Guid.NewGuid();
                 await db.Customers.AddAsync(userData);
                 await db.SaveChangesAsync();
-                return CreatedAtAction(nameof(GetUser), new { id = userData.CustomerId }, userData);
+
+                // Генерация и возврат JWT-токена при успешной аутентификации
+                var token = GenerateJwtToken(userData.Email);
+
+                return CreatedAtAction(nameof(GetUser), new { id = userData.CustomerId }, new { Token = token });
             }
             catch (Exception ex)
             {
@@ -85,6 +92,29 @@ namespace Marcet_DB.Controllers
                 return BadRequest($"Ошибка при удалении пользователя: {ex.Message}");
             }
         }
+
+        private string GenerateJwtToken(string email)
+        {
+            var securityKey = AuthOptions.GetSymmetricSecurityKey();
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+        new Claim(ClaimTypes.Name, email),
+    };
+
+            var token = new JwtSecurityToken(
+                issuer: AuthOptions.ISSUER,
+                audience: AuthOptions.AUDIENCE,
+                claims: claims,
+                expires: DateTime.UtcNow.Add(TimeSpan.FromMinutes(15)), // Установите желаемое время жизни токена
+                signingCredentials: credentials
+            );
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            return tokenHandler.WriteToken(token);
+        }
+
 
         private void UpdateUserData(Customer user, Customer userData)
         {

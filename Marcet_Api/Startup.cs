@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Marcet_Api.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 
@@ -29,6 +32,24 @@ namespace Marcet_DB
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
             });
+
+            // Настройка аутентификации с использованием JWT
+            var key = AuthOptions.GetSymmetricSecurityKey();
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.RequireHttpsMetadata = false;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = AuthOptions.ISSUER,
+                        ValidateAudience = true,
+                        ValidAudience = AuthOptions.AUDIENCE,
+                        ValidateLifetime = true,
+                        IssuerSigningKey = key,
+                        ValidateIssuerSigningKey = true,
+                    };
+                });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -47,6 +68,9 @@ namespace Marcet_DB
             app.UseStaticFiles();
 
             app.UseRouting();
+
+            // Включение аутентификации и авторизации
+            app.UseAuthentication();
             app.UseAuthorization();
 
             // Включение Swagger и Swagger UI
