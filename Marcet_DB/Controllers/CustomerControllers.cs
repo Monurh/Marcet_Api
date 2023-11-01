@@ -31,23 +31,28 @@ namespace Marcet_DB.Controllers
             return Ok(user);
         }
 
-        [HttpPost("add")]
-        public async Task<ActionResult> AddUser([FromBody] Customer userData)
+        [HttpPost("register")]
+        public async Task<ActionResult> RegisterUser([FromBody] Customer userData)
         {
             try
             {
+                // Генерировать Id автоматически
                 userData.CustomerId = Guid.NewGuid();
+
+                // Установить роль по умолчанию 
+                userData.Rolle = "User";
+
                 await db.Customers.AddAsync(userData);
                 await db.SaveChangesAsync();
 
-                // Генерация и возврат JWT-токена при успешной аутентификации
+                // Генерация и возврат JWT-токена при успешной регистрации
                 var token = GenerateJwtToken(userData.Email);
 
                 return CreatedAtAction(nameof(GetUser), new { id = userData.CustomerId }, new { Token = token });
             }
             catch (Exception ex)
             {
-                return BadRequest($"Ошибка при добавлении пользователя: {ex.Message}");
+                return BadRequest($"Ошибка при регистрации пользователя: {ex.Message}");
             }
         }
 
