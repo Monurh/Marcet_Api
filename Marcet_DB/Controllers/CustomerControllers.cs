@@ -1,10 +1,13 @@
-﻿using Marcet_Api.Authentication;
-using Marcet_DB.Models;
+﻿using Marcet_DB.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Marcet_Api.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Marcet_DB.Controllers
 {
@@ -13,19 +16,22 @@ namespace Marcet_DB.Controllers
     public class CustomerController : ControllerBase
     {
         private readonly ApplicationContext db;
+        private readonly IConfiguration _configuration;
 
-        public CustomerController(ApplicationContext dbContext)
+        public CustomerController(ApplicationContext dbContext, IConfiguration configuration)
         {
             db = dbContext;
+            _configuration = configuration;
         }
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpGet("{id:guid}")]
         public async Task<ActionResult> GetUser(Guid id)
         {
             var user = await db.Customers.FirstOrDefaultAsync(u => u.CustomerId == id);
             if (user == null)
             {
-                return NotFound("Пользователь не найден");
+                return NotFound("Користувач не знайдений");
             }
 
             return Ok(user);
@@ -39,7 +45,7 @@ namespace Marcet_DB.Controllers
                 // Генерировать Id автоматически
                 userData.CustomerId = Guid.NewGuid();
 
-                // Установить роль по умолчанию 
+                // Установить роль по умолчанию
                 userData.Rolle = "User";
 
                 await db.Customers.AddAsync(userData);
@@ -52,10 +58,11 @@ namespace Marcet_DB.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Ошибка при регистрации пользователя: {ex.Message}");
+                return BadRequest($"Помилка під час реєстрації користувача: {ex.Message}");
             }
         }
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpPut("edit")]
         public async Task<ActionResult> EditUser([FromBody] Customer userData)
         {
@@ -64,19 +71,28 @@ namespace Marcet_DB.Controllers
                 var user = await db.Customers.FirstOrDefaultAsync(u => u.CustomerId == userData.CustomerId);
                 if (user == null)
                 {
-                    return NotFound("Пользователь не найден");
+                    return NotFound("Користувач не знайдений");
                 }
 
-                UpdateUserData(user, userData);
-                await db.SaveChangesAsync();
-                return Ok(userData);
+                // Ограничение на изменение роли только админами
+                if (User.IsInRole("Admin") || User.Identity.Name == user.Email)
+                {
+                    UpdateUserData(user, userData);
+                    await db.SaveChangesAsync();
+                    return Ok(userData);
+                }
+                else
+                {
+                    return Forbid("Недостатньо прав");
+                }
             }
             catch (Exception ex)
             {
-                return BadRequest($"Ошибка при редактировании пользователя: {ex.Message}");
+                return BadRequest($"Помилка під час редагування користувача: {ex.Message}");
             }
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:guid}")]
         public async Task<ActionResult> DeleteUser(Guid id)
         {
@@ -85,7 +101,7 @@ namespace Marcet_DB.Controllers
                 var user = await db.Customers.FirstOrDefaultAsync(u => u.CustomerId == id);
                 if (user == null)
                 {
-                    return NotFound("Пользователь не найден");
+                    return NotFound("Користувач не знайдений");
                 }
 
                 db.Customers.Remove(user);
@@ -94,32 +110,34 @@ namespace Marcet_DB.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Ошибка при удалении пользователя: {ex.Message}");
+                return BadRequest($"Помилка під час видалення користувача: {ex.Message}");
             }
         }
 
         private string GenerateJwtToken(string email)
         {
-            var securityKey = AuthOptions.GetSymmetricSecurityKey();
+            var authOptions = _configuration.GetSection("AuthOptions").Get<AuthOptions>();
+            var securityKey = authOptions.GetSymmetricSecurityKey();
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
             {
-        new Claim(ClaimTypes.Name, email),
-    };
+                new Claim(ClaimTypes.Name, email), // Имя пользователя
+            };
 
             var token = new JwtSecurityToken(
-                issuer: AuthOptions.ISSUER,
-                audience: AuthOptions.AUDIENCE,
-                claims: claims,
-                expires: DateTime.UtcNow.Add(TimeSpan.FromMinutes(15)), // Установите желаемое время жизни токена
-                signingCredentials: credentials
+                issuer: authOptions.Issuer, // Выпускающий (issuer) токена
+                audience: authOptions.Audience, // Аудитория (audience) токена
+                claims: claims, // Утверждения (claims) включаемые в токен
+                expires: DateTime.UtcNow.AddMinutes(authOptions.TokenLifetime), // Время жизни токена
+                signingCredentials: credentials // Учетные данные для подписи токена
             );
 
             var tokenHandler = new JwtSecurityTokenHandler();
+
+            // Генерация токена и его возврат в виде строки
             return tokenHandler.WriteToken(token);
         }
-
 
         private void UpdateUserData(Customer user, Customer userData)
         {
@@ -131,5 +149,20 @@ namespace Marcet_DB.Controllers
             user.Password = userData.Password;
             user.Rolle = userData.Rolle;
         }
+
+        [HttpPost("login")]
+        public async Task<ActionResult> Login([FromBody] LoginModel loginModel)
+        {
+            var user = await db.Customers.FirstOrDefaultAsync(u => u.Email == loginModel.Email);
+            if (user == null || user.Password != loginModel.Password)
+            {
+                return BadRequest("Неверные учетные данные");
+            }
+
+            var token = GenerateJwtToken(user.Email);
+
+            return Ok(new { Token = token });
+        }
     }
 }
+

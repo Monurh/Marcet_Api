@@ -13,4 +13,10 @@ namespace Marcet_DB.Models
         public string Password { get; set; } = "";
         public string Rolle { get; set; } = "";
     }
+    public class LoginModel
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
 }

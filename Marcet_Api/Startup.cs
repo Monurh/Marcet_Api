@@ -1,9 +1,8 @@
-﻿using Marcet_Api.Authentication;
+﻿using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Marcet_Api.Authentication;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-
 
 namespace Marcet_DB
 {
@@ -31,25 +30,58 @@ namespace Marcet_DB
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
+
+                // Добавьте аутентификацию JWT для Swagger
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header using the Bearer scheme",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new string[] { }
+                    }
+                });
             });
 
             // Настройка аутентификации с использованием JWT
-            var key = AuthOptions.GetSymmetricSecurityKey();
+            var authOptions = Configuration.GetSection("AuthOptions").Get<AuthOptions>();
+            var securityKey = authOptions.GetSymmetricSecurityKey();
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.RequireHttpsMetadata = false;
+                    options.RequireHttpsMetadata = false; // Установите true в продакшене для HTTPS
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
-                        ValidIssuer = AuthOptions.ISSUER,
+                        ValidIssuer = authOptions.Issuer,
                         ValidateAudience = true,
-                        ValidAudience = AuthOptions.AUDIENCE,
+                        ValidAudience = authOptions.Audience,
                         ValidateLifetime = true,
-                        IssuerSigningKey = key,
+                        IssuerSigningKey = securityKey,
                         ValidateIssuerSigningKey = true,
                     };
                 });
+
+            // Добавление сервисов для аутентификации и авторизации
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+                options.AddPolicy("User", policy => policy.RequireRole("User"));
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -57,6 +89,18 @@ namespace Marcet_DB
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+
+                // Используйте Swagger с аутентификацией
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API V1");
+
+                    // Настройка аутентификации для Swagger UI
+                    c.OAuthClientId("swagger-ui");
+                    c.OAuthClientSecret("swagger-ui-secret");
+                    c.OAuthUseBasicAuthenticationWithAccessCodeGrant();
+                });
             }
             else
             {
@@ -72,13 +116,6 @@ namespace Marcet_DB
             // Включение аутентификации и авторизации
             app.UseAuthentication();
             app.UseAuthorization();
-
-            // Включение Swagger и Swagger UI
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API V1");
-            });
 
             app.UseEndpoints(endpoints =>
             {
