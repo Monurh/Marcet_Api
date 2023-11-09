@@ -52,7 +52,7 @@ namespace Marcet_DB.Controllers
                 await db.SaveChangesAsync();
 
                 // Генерация и возврат JWT-токена при успешной регистрации
-                var token = GenerateJwtToken(userData.Email);
+                var token = GenerateJwtToken(userData.Email, userData.Rolle);
 
                 return CreatedAtAction(nameof(GetUser), new { id = userData.CustomerId }, new { Token = token });
             }
@@ -114,30 +114,31 @@ namespace Marcet_DB.Controllers
             }
         }
 
-        private string GenerateJwtToken(string email)
+        private string GenerateJwtToken(string email, string role)
         {
             var authOptions = _configuration.GetSection("AuthOptions").Get<AuthOptions>();
             var securityKey = authOptions.GetSymmetricSecurityKey();
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, email), // Имя пользователя
-            };
+             {
+                  new Claim(ClaimTypes.Name, email), // User's email
+                  new Claim(ClaimTypes.Role, role)    // User's role
+             };
 
             var token = new JwtSecurityToken(
-                issuer: authOptions.Issuer, // Выпускающий (issuer) токена
-                audience: authOptions.Audience, // Аудитория (audience) токена
-                claims: claims, // Утверждения (claims) включаемые в токен
-                expires: DateTime.UtcNow.AddMinutes(authOptions.TokenLifetime), // Время жизни токена
-                signingCredentials: credentials // Учетные данные для подписи токена
+                issuer: authOptions.Issuer,
+                audience: authOptions.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(authOptions.TokenLifetime),
+                signingCredentials: credentials
             );
 
             var tokenHandler = new JwtSecurityTokenHandler();
 
-            // Генерация токена и его возврат в виде строки
             return tokenHandler.WriteToken(token);
         }
+
 
         private void UpdateUserData(Customer user, Customer userData)
         {
@@ -159,7 +160,7 @@ namespace Marcet_DB.Controllers
                 return BadRequest("Неверные учетные данные");
             }
 
-            var token = GenerateJwtToken(user.Email);
+            var token = GenerateJwtToken(user.Email, user.Rolle);
 
             return Ok(new { Token = token });
         }
