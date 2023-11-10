@@ -24,7 +24,7 @@ namespace Marcet_DB.Controllers
             _configuration = configuration;
         }
 
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [Authorize(Roles ="Admin")]
         [HttpGet("{id:guid}")]
         public async Task<ActionResult> GetUser(Guid id)
         {
@@ -113,7 +113,6 @@ namespace Marcet_DB.Controllers
                 return BadRequest($"Помилка під час видалення користувача: {ex.Message}");
             }
         }
-
         private string GenerateJwtToken(string email, string role)
         {
             var authOptions = _configuration.GetSection("AuthOptions").Get<AuthOptions>();
@@ -160,7 +159,7 @@ namespace Marcet_DB.Controllers
                 return BadRequest("Неверные учетные данные");
             }
 
-            var token = GenerateJwtToken(user.Email, user.Rolle);
+            var token = GenerateJwtToken(user.Email, user.Rolle);   
 
             return Ok(new { Token = token });
         }
