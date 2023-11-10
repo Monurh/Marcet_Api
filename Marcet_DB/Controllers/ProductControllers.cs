@@ -106,7 +106,6 @@ namespace Marcet_DB.Controllers
             product.Photo= prodctData.Photo;
         }
 
-
         // Pagination
         [HttpGet("Pagination")]
         [SwaggerOperation(Summary = "Get paginated items", Description = "Get a paginated list of items.")]
