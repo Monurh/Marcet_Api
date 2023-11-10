@@ -107,8 +107,7 @@ namespace Marcet_DB.Controllers
         }
 
 
-        // Пагинация
-
+        // Pagination
         [HttpGet("Pagination")]
         [SwaggerOperation(Summary = "Get paginated items", Description = "Get a paginated list of items.")]
         [SwaggerResponse(StatusCodes.Status200OK, "Successful operation", typeof(IEnumerable<Product>))]
