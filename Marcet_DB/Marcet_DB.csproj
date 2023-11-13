@@ -16,4 +16,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Marcet_Log\Marcet_Log.csproj" />
+  </ItemGroup>
+
 </Project>

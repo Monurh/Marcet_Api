@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Runtime.Serialization;
 
 namespace Marcet_DB.Controllers
 {
@@ -106,6 +107,7 @@ namespace Marcet_DB.Controllers
             product.Photo= prodctData.Photo;
         }
 
+
         // Pagination
         [HttpGet("Pagination")]
         [SwaggerOperation(Summary = "Get paginated items", Description = "Get a paginated list of items.")]
@@ -127,5 +129,50 @@ namespace Marcet_DB.Controllers
             }
         }
 
+        //Sort
+        [HttpGet("Sort")]
+        public async Task<IActionResult> GetSortedProducts(SortProduct sortOption)
+        {
+            try
+            {
+                IQueryable<Product> query = db.Products;
+
+                switch (sortOption)
+                {
+                    //По алфовиту
+                    case SortProduct.NameAsc:
+                        query = query.OrderBy(p => p.ProductName);
+                        break;
+                    // начиная с конца алфовита
+                    case SortProduct.NameDesc:
+                        query = query.OrderByDescending(p => p.ProductName);
+                        break;
+                    //возростание по цене
+                    case SortProduct.PriceAsc:
+                        query = query.OrderBy(p => p.Price);
+                        break;
+                    // убывание по цене
+                    case SortProduct.PriceDesc:
+                        query = query.OrderByDescending(p => p.Price);
+                        break;
+                    // по категории
+                    case SortProduct.Category:
+                        query = query.OrderBy(p => p.Category);
+                        break;
+                }
+                string sortingName = Enum.GetName(typeof(SortProduct), sortOption);
+                string sortingDisplayName = typeof(SortProduct)
+                    .GetField(sortingName)
+                    .GetCustomAttributes(typeof(SortProduct), false)
+                    .Cast<EnumMemberAttribute>()
+                    .FirstOrDefault()?.Value;
+                var sortedProducts = await query.ToListAsync();
+                return Ok(sortedProducts);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal Server Error: {ex.Message}");
+            }
+        }
     }
 }

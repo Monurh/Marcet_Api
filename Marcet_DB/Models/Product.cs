@@ -1,4 +1,6 @@
-﻿namespace Marcet_DB.Models
+﻿using System.Runtime.Serialization;
+
+namespace Marcet_DB.Models
 {
     public class Product
     {
@@ -10,5 +12,19 @@
         public string Category { get; set; } = "";
         public string Manufacturer { get; set; } = "";
         public string Photo { get; set; } = "";
+    }
+
+    public enum SortProduct
+    {
+        [EnumMember(Value = "А-Я")]
+        NameAsc, // по Алфовиту
+        [EnumMember(Value = "Я-А")]
+        NameDesc, // не по алфовиту
+        [EnumMember(Value = "За зростанням ")]
+        PriceAsc, // повазростанию цены
+        [EnumMember(Value = "За спаданням")]
+        PriceDesc, // по убыванию цены
+        [EnumMember(Value = "За категоріями")]
+        Category
     }
 }
