@@ -107,7 +107,8 @@ namespace Marcet_DB
                 app.UseExceptionHandler("/Home/Error");
                 app.UseHsts();
             }
-
+            //ErrorHanding
+            app.UseMiddleware<ErrorHandlingMiddleware>();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 

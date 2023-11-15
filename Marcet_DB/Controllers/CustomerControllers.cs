@@ -8,6 +8,7 @@ using System.Security.Claims;
 using Marcet_Api.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Marcet_Log.ErrorHandling;
 
 namespace Marcet_DB.Controllers
 {
@@ -66,12 +67,12 @@ namespace Marcet_DB.Controllers
         [HttpPut("edit")]
         public async Task<ActionResult> EditUser([FromBody] Customer userData)
         {
-            try
-            {
+            
+            
                 var user = await db.Customers.FirstOrDefaultAsync(u => u.CustomerId == userData.CustomerId);
                 if (user == null)
                 {
-                    return NotFound("Користувач не знайдений");
+                   throw new NotFoundException("Користувач не знайдений");
                 }
 
                 // Ограничение на изменение роли только админами
@@ -83,35 +84,23 @@ namespace Marcet_DB.Controllers
                 }
                 else
                 {
-                    return Forbid("Недостатньо прав");
+                   throw new UnauthorizedException("Недостатньо прав");
                 }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Помилка під час редагування користувача: {ex.Message}");
-            }
         }
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id:guid}")]
         public async Task<ActionResult> DeleteUser(Guid id)
         {
-            try
-            {
                 var user = await db.Customers.FirstOrDefaultAsync(u => u.CustomerId == id);
                 if (user == null)
                 {
-                    return NotFound("Користувач не знайдений");
+                    throw new NotFoundException("Користувач не знайдений");
                 }
 
                 db.Customers.Remove(user);
                 await db.SaveChangesAsync();
                 return Ok(user);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Помилка під час видалення користувача: {ex.Message}");
-            }
         }
         private string GenerateJwtToken(string email, string role)
         {

@@ -1,5 +1,6 @@
 ﻿using Marcet_DB.Models;
 using Marcet_DB.Pagination;
+using Marcet_Log.ErrorHandling;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -59,42 +60,29 @@ namespace Marcet_DB.Controllers
         [HttpPut("edit")]
         public async Task<ActionResult> EditProduct([FromBody] Product productData)
         {
-            try
-            {
+            
+            
                 var product = await db.Products.FirstOrDefaultAsync(u => u.ProductId == productData.ProductId);
                 if (product == null)
                 {
-                    return NotFound("Товар не знайдено");
+                  throw new NotFoundException("Товар не знайдено");
                 }
                 UpdateProductData(product, productData);
                 await db.SaveChangesAsync();
                 return Ok(productData);
-              
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Помилка під час редагування: {ex.Message}");
-            }
         }
         [Authorize(Roles ="Admin")]
         [HttpDelete("delete")]
         public async Task<ActionResult>DeleteProduct(Guid id)
         {
-            try
-            {
                 var product = await db.Products.FirstOrDefaultAsync(u =>u.ProductId==id);
                 if(product == null)
                 {
-                    return NotFound("Товар не знайдено");
+                  throw new NotFoundException("Товар не знайдено");
                 }
                 db.Products.Remove(product);
                 await db.SaveChangesAsync();
                 return Ok(product);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Помилка при видаленні товару");
-            }
         }
         private void UpdateProductData(Product product, Product prodctData)
         {
@@ -114,65 +102,60 @@ namespace Marcet_DB.Controllers
         [SwaggerResponse(StatusCodes.Status200OK, "Successful operation", typeof(IEnumerable<Product>))]
         public async Task<IActionResult> GetItems([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            try
-            {
-                var items = await db.Products
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
+            var items = await db.Products
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
-                return Ok(items);
-            }
-            catch (Exception ex)
+            if (items == null || items.Count == 0)
             {
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
+                throw new NotFoundException("Paginated items", "No items found");
             }
+
+            return Ok(items);
         }
+
+
 
         //Sort
         [HttpGet("Sort")]
         public async Task<IActionResult> GetSortedProducts(SortProduct sortOption)
         {
-            try
-            {
-                IQueryable<Product> query = db.Products;
+            IQueryable<Product> query = db.Products;
 
-                switch (sortOption)
-                {
-                    //По алфовиту
-                    case SortProduct.NameAsc:
-                        query = query.OrderBy(p => p.ProductName);
-                        break;
-                    // начиная с конца алфовита
-                    case SortProduct.NameDesc:
-                        query = query.OrderByDescending(p => p.ProductName);
-                        break;
-                    //возростание по цене
-                    case SortProduct.PriceAsc:
-                        query = query.OrderBy(p => p.Price);
-                        break;
-                    // убывание по цене
-                    case SortProduct.PriceDesc:
-                        query = query.OrderByDescending(p => p.Price);
-                        break;
-                    // по категории
-                    case SortProduct.Category:
-                        query = query.OrderBy(p => p.Category);
-                        break;
-                }
-                string sortingName = Enum.GetName(typeof(SortProduct), sortOption);
-                string sortingDisplayName = typeof(SortProduct)
-                    .GetField(sortingName)
-                    .GetCustomAttributes(typeof(SortProduct), false)
-                    .Cast<EnumMemberAttribute>()
-                    .FirstOrDefault()?.Value;
-                var sortedProducts = await query.ToListAsync();
-                return Ok(sortedProducts);
-            }
-            catch (Exception ex)
+            switch (sortOption)
             {
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
+                //По алфавиту
+                case SortProduct.NameAsc:
+                    query = query.OrderBy(p => p.ProductName);
+                    break;
+                // начиная с конца алфавита
+                case SortProduct.NameDesc:
+                    query = query.OrderByDescending(p => p.ProductName);
+                    break;
+                //возрастание по цене
+                case SortProduct.PriceAsc:
+                    query = query.OrderBy(p => p.Price);
+                    break;
+                // убывание по цене
+                case SortProduct.PriceDesc:
+                    query = query.OrderByDescending(p => p.Price);
+                    break;
+                // по категории
+                case SortProduct.Category:
+                    query = query.OrderBy(p => p.Category);
+                    break;
             }
+
+            string sortingName = Enum.GetName(typeof(SortProduct), sortOption);
+            string sortingDisplayName = typeof(SortProduct)
+                .GetField(sortingName)
+                .GetCustomAttributes(typeof(SortProduct), false)
+                .Cast<EnumMemberAttribute>()
+                .FirstOrDefault()?.Value;
+
+            var sortedProducts = await query.ToListAsync();
+            return Ok(sortedProducts);
         }
     }
 }
