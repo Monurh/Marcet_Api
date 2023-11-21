@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Marcet_Api.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Marcet_Log.ILogger;
+using Serilog;
 
 namespace Marcet_DB
 {
@@ -17,6 +19,12 @@ namespace Marcet_DB
 
         public void ConfigureServices(IServiceCollection services)
         {
+            Log.Logger = new LoggerConfiguration()
+           .ReadFrom.Configuration(Configuration)
+           .CreateLogger();
+
+            services.AddSingleton(Log.Logger); // Register Serilog logger
+            services.AddSingleton<ILoggerService, SerilogLoggerService>();
             // Добавление строки подключения
             string connection = "Server=192.168.0.101;Database=Marcet_DB;User Id=sa;Password=vopenu48;TrustServerCertificate=True";
 
@@ -111,6 +119,7 @@ namespace Marcet_DB
             app.UseMiddleware<ErrorHandlingMiddleware>();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+
 
             app.UseRouting();
 
