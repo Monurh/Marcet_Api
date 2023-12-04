@@ -75,7 +75,29 @@ namespace Marcet_DB.Controllers
                 return StatusCode(500, "Internal Server Error");
             }
         }
+        //Get Name
+        [HttpGet("{name}")]
+        public async Task<ActionResult>GetProguct(String name)
+        {
+            try
+            {
+                _logger.LogInformation($"Executing GetProduct method for product with Name:{name}");
 
+                var product = await db.Products.FirstOrDefaultAsync(u=>u.ProductName==name);
+                if (product == null) 
+                {
+                    _logger.LogWarning($"Product with ID {name} not found.");
+                    return NotFound("Товар не знайден");
+                }
+                _logger.LogInformation($"GetProduct method executed successfully for product with ProductName: {name}");
+                return Ok(product);
+            }
+            catch(Exception ex) 
+            {
+                _logger.LogError($"An error occurred while processing GetProduct for product with ProductName: {name}", ex);
+                return StatusCode(500, "Internal Server Error");
+            }
+        }
         [Authorize(Roles = "Admin")]
         [HttpPut("edit")]
         public async Task<ActionResult> EditProduct([FromBody] Product productData)
@@ -173,8 +195,6 @@ namespace Marcet_DB.Controllers
                 return StatusCode(500, "Internal Server Error");
             }
         }
-
-
 
         //Sort
         [HttpGet("Sort")]
