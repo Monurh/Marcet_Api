@@ -77,16 +77,16 @@ namespace Marcet_DB.Controllers
         }
         //Get Name
         [HttpGet("{name}")]
-        public async Task<ActionResult>GetProguct(String name)
+        public async Task<ActionResult>GetProduct(String name)
         {
             try
             {
                 _logger.LogInformation($"Executing GetProduct method for product with Name:{name}");
 
-                var product = await db.Products.FirstOrDefaultAsync(u=>u.ProductName==name);
-                if (product == null) 
+                var product = await db.Products.Where(u=>u.ProductName==name).ToListAsync();
+                if (product == null || !product.Any()) 
                 {
-                    _logger.LogWarning($"Product with ID {name} not found.");
+                    _logger.LogWarning($"Product with  {name} not found.");
                     return NotFound("Товар не знайден");
                 }
                 _logger.LogInformation($"GetProduct method executed successfully for product with ProductName: {name}");
@@ -98,6 +98,7 @@ namespace Marcet_DB.Controllers
                 return StatusCode(500, "Internal Server Error");
             }
         }
+
         [Authorize(Roles = "Admin")]
         [HttpPut("edit")]
         public async Task<ActionResult> EditProduct([FromBody] Product productData)
