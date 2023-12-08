@@ -249,6 +249,5 @@ namespace Marcet_DB.Controllers
                 return StatusCode(500, "Internal Server Error");
             }
         }
-
     }
 }

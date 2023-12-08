@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Marcet_Log.ILogger;
 using Serilog;
+using Marcet_DB.Sevice;
 
 namespace Marcet_DB
 {
@@ -20,8 +21,8 @@ namespace Marcet_DB
         public void ConfigureServices(IServiceCollection services)
         {
             Log.Logger = new LoggerConfiguration()
-           .ReadFrom.Configuration(Configuration)
-           .CreateLogger();
+               .ReadFrom.Configuration(Configuration)
+               .CreateLogger();
 
             services.AddSingleton(Log.Logger); // Register Serilog logger
             services.AddSingleton<ILoggerService, SerilogLoggerService>();
@@ -33,6 +34,12 @@ namespace Marcet_DB
             // Подключение к базе данных
             services.AddDbContext<ApplicationContext>(options =>
                 options.UseSqlServer(connection));
+
+            // Регистрация сервиса корзины
+            services.AddScoped<ICartService, CartService>(); // Замените на фактический тип вашего сервиса корзины
+
+            // Регистрация сервиса заказов
+            services.AddScoped<IOrderService, OrderService>(); // Замените на фактический тип вашего сервиса заказов
 
             // Регистрация Swagger
             services.AddSwaggerGen(c =>
@@ -119,7 +126,6 @@ namespace Marcet_DB
             app.UseMiddleware<ErrorHandlingMiddleware>();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
 
             app.UseRouting();
 

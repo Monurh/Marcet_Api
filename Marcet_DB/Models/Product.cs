@@ -13,8 +13,7 @@ namespace Marcet_DB.Models
         public string Manufacturer { get; set; } = "";
         public string Photo { get; set; } = "";
     }
-
-    public enum SortProduct
+     public enum SortProduct
     {
         [EnumMember(Value = "А-Я")]
         NameAsc, // по Алфовиту
